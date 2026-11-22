@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2E6F5E">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Bütçem">
+    <link rel="manifest" href="manifest.json">
+    <title>Bütçe Defterim — Haftalık Bütçe & Tasarruf</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Lora -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        serif: ['Lora', 'Georgia', 'serif'],
+                    },
+                    colors: {
+                        paper: '#F7F5F0',
+                        card: '#FFFFFF',
+                        stoneborder: '#E5E0D8',
+                        ink: '#1F2421',
+                        muted: '#6B706B',
+                        sage: {
+                            DEFAULT: '#2E6F5E',
+                            light: '#EBF2EE',
+                            dark: '#215245'
+                        },
+                        clay: {
+                            DEFAULT: '#C86D3B',
+                            light: '#FAF0EC'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            background-color: #F7F5F0;
+            color: #1F2421;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+        /* Sayı input oklarını gizle */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        /* Sekme geçiş animasyonu */
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .view-animate {
+            animation: fadeSlideUp 0.22s ease-out forwards;
+        }
+        /* Tebrik nabız animasyonu */
+        @keyframes gentlePop {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+        .celebrate-pop {
+            animation: gentlePop 0.35s ease-out;
+        }
+        /* İnce kaydırma çubuğu */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D6D1C7;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center selection:bg-sage/15">
+
+    <!-- Üst Bildirim Kutusu (alert() yerine tebrik & bilgi mesajı) -->
+    <div id="toast-wrapper" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md pointer-events-none transition-all duration-300 opacity-0 -translate-y-4">
+        <div id="toast-box" class="bg-ink text-paper px-4 py-3.5 rounded-2xl shadow-xl flex items-center justify-between gap-3 border border-white/10">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <span id="toast-icon" class="w-6 h-6 rounded-full bg-sage text-white flex items-center justify-center shrink-0 text-xs font-bold">✓</span>
+                <span id="toast-text" class="text-xs sm:text-sm font-medium leading-snug">Kaydedildi</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tam Ekran Akıcı Uygulama Konteyneri -->
+    <div class="w-full max-w-xl min-h-screen flex flex-col px-4 pt-4 pb-24">
+
+        <!-- Sabit Üst Başlık Barı -->
+        <header class="flex items-center justify-between py-2 mb-3">
+            <div>
+                <p id="header-date-label" class="text-[11px] font-medium text-muted">Haftalık Bütçe Planı</p>
+                <h1 class="font-serif text-xl sm:text-2xl font-bold text-ink tracking-tight">Bütçe Defterim</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <!-- Kumbara Hızlı Rozeti -->
+                <button type="button" onclick="navigateTab('piggy')" class="px-3 py-1.5 rounded-full bg-sage-light border border-sage/20 text-sage text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></svg>
+                    <span id="top-piggy-amount">0 ₺</span>
+                </button>
+                <!-- Bütçe Planı Ayarları -->
+                <button type="button" onclick="openSetupModal()" class="p-2.5 rounded-full bg-card border border-stoneborder text-ink hover:bg-stone-100 active:scale-95 transition" title="Haftalık Bütçe Ayarları">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- İLK KURULUM EKRANI (Eğer henüz haftalık bütçe belirlenmediyse) -->
+        <section id="first-setup-screen" class="hidden flex-1 flex flex-col justify-center py-4 view-animate">
+            <div class="bg-card border border-stoneborder rounded-3xl p-6 shadow-sm">
+                <span class="inline-block px-3 py-1 rounded-full bg-sage-light text-sage text-[11px] font-semibold mb-3">Önce Kendine Öde</span>
+                <h2 class="font-serif text-2xl font-bold text-ink mb-2">Haftalık planını kuralım</h2>
+                <p class="text-xs sm:text-sm text-muted leading-relaxed mb-5">
+                    Haftalık toplam bütçeni yaz ve daha harcamaya başlamadan kendine ayırmak istediğin birikim yüzdesini seç. Kalan tutar 7 güne bölünerek günlük harcama limitin oluşturulur.
+                </p>
+
+                <form id="initial-setup-form" class="flex flex-col gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-ink mb-1.5">Haftalık Toplam Bütçen (₺)</label>
+                        <input type="number" id="init-budget-input" min="10" step="1" placeholder="Örn: 3500" required
+                            class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-4 py-3.5 text-xl font-bold text-ink outline-none">
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-semibold text-ink">Otomatik Birikim Yüzdesi (%)</label>
+                            <span id="init-savings-preview" class="text-xs font-bold text-sage">0 ₺ ayrılacak</span>
+                        </div>
+                        <div class="grid grid-cols-4 gap-2 mb-2">
+                            <button type="button" onclick="setInitPct(10)" class="init-pct-btn py-2 rounded-xl border border-stoneborder bg-paper text-xs font-semibold text-ink transition">%10</button>
+                            <button type="button" onclick="setInitPct(15)" class="init-pct-btn py-2 rounded-xl border border-sage bg-sage-light text-xs font-semibold text-sage transition">%15</button>
+                            <button type="button" onclick="setInitPct(20)" class="init-pct-btn py-2 rounded-xl border border-stoneborder bg-paper text-xs font-semibold text-ink transition">%20</button>
+                            <button type="button" onclick="setInitPct(0)" class="init-pct-btn py-2 rounded-xl border border-stoneborder bg-paper text-xs font-semibold text-muted transition">%0</button>
+                        </div>
+                        <input type="number" id="init-pct-input" min="0" max="90" step="1" value="15"
+                            class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-4 py-2.5 text-sm font-semibold text-sage outline-none">
+                    </div>
+
+                    <button type="submit" class="mt-2 w-full bg-sage hover:bg-sage-dark text-white font-semibold text-sm py-4 rounded-2xl transition active:scale-[0.98]">
+                        Planı Başlat
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ANA UYGULAMA ALANI (4 Sekmeli Tam Ekran Deneyimi) -->
+        <div id="app-main-container" class="flex-1 flex flex-col">
+
+            <!-- ============================================================ -->
+            <!-- SEKME 1: ANA SAYFA / BÜTÇE                                   -->
+            <!-- ============================================================ -->
+            <section id="tab-home" class="tab-view flex flex-col gap-4 view-animate">
+
+                <!-- Bakiye ve Günlük Limit Ana Kartı -->
+                <div class="bg-card border border-stoneborder rounded-3xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-medium text-muted">Harcanabilir Kalan Bakiye</span>
+                        <span id="home-status-pill" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-sage-light text-sage">
+                            Dengeli İlerliyor
+                        </span>
+                    </div>
+
+                    <div class="my-1.5 flex items-baseline gap-1.5">
+                        <span id="home-remaining-val" class="font-serif text-4xl sm:text-[42px] font-bold text-ink tracking-tight">0,00</span>
+                        <span class="font-serif text-xl font-semibold text-muted">₺</span>
+                    </div>
+
+                    <!-- İlerleme Çubuğu -->
+                    <div class="mt-4">
+                        <div class="flex justify-between text-[11px] text-muted mb-1.5">
+                            <span id="home-spent-summary">Harcanan: 0 ₺</span>
+                            <span id="home-daily-limit" class="font-semibold text-sage">Günlük Limit: 0 ₺</span>
+                        </div>
+                        <div class="w-full h-3 bg-paper rounded-full overflow-hidden border border-stoneborder/70">
+                            <div id="home-progress-bar" class="h-full bg-sage rounded-full transition-all duration-500" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 3'lü Özet Şeridi -->
+                    <div class="grid grid-cols-3 gap-2 mt-4 pt-3.5 border-t border-stoneborder/70 text-center">
+                        <div>
+                            <div class="text-[11px] text-muted">Haftalık Bütçe</div>
+                            <div id="home-total-budget" class="text-xs sm:text-sm font-bold text-ink mt-0.5">0 ₺</div>
+                        </div>
+                        <div class="border-x border-stoneborder/70">
+                            <div class="text-[11px] text-muted">Ayrılan Birikim</div>
+                            <div id="home-locked-savings" class="text-xs sm:text-sm font-bold text-sage mt-0.5">0 ₺</div>
+                        </div>
+                        <div>
+                            <div class="text-[11px] text-muted">Kalan Gün</div>
+                            <div id="home-days-left" class="text-xs sm:text-sm font-bold text-ink mt-0.5">7 gün</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hızlı Harcama Ekleme Kartı -->
+                <div class="bg-card border border-stoneborder rounded-3xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-serif text-base font-bold text-ink">Hızlı Harcama Ekle</h2>
+                        <!-- Dokunmatik Hızlı Tutar Butonları -->
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="addQuickAmount(50)" class="px-2.5 py-1 rounded-xl bg-paper hover:bg-sage-light border border-stoneborder text-[11px] font-semibold text-ink active:scale-95 transition">+50₺</button>
+                            <button type="button" onclick="addQuickAmount(100)" class="px-2.5 py-1 rounded-xl bg-paper hover:bg-sage-light border border-stoneborder text-[11px] font-semibold text-ink active:scale-95 transition">+100₺</button>
+                            <button type="button" onclick="addQuickAmount(250)" class="px-2.5 py-1 rounded-xl bg-paper hover:bg-sage-light border border-stoneborder text-[11px] font-semibold text-ink active:scale-95 transition">+250₺</button>
+                        </div>
+                    </div>
+
+                    <form id="quick-expense-form" class="flex flex-col gap-3.5">
+                        <div class="grid grid-cols-5 gap-2.5">
+                            <div class="col-span-2">
+                                <label class="block text-[11px] font-semibold text-muted mb-1">Tutar (₺)</label>
+                                <input type="number" id="exp-amount-input" step="0.01" min="0.01" placeholder="0.00" required
+                                    class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-3.5 py-2.5 text-base font-bold text-ink outline-none">
+                            </div>
+                            <div class="col-span-3">
+                                <label class="block text-[11px] font-semibold text-muted mb-1">Açıklama</label>
+                                <input type="text" id="exp-desc-input" placeholder="Örn: Öğle yemeği, market..." required
+                                    class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-3.5 py-2.5 text-sm text-ink outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Kategori Hap Butonları -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-muted mb-1.5">Kategori</label>
+                            <div id="category-pills" class="flex flex-wrap gap-1.5">
+                                <button type="button" data-cat="Yeme-İçme" onclick="selectCategory('Yeme-İçme')" class="cat-pill px-3 py-1.5 rounded-xl border border-sage bg-sage-light text-sage text-xs font-semibold transition">Yeme-İçme</button>
+                                <button type="button" data-cat="Market" onclick="selectCategory('Market')" class="cat-pill px-3 py-1.5 rounded-xl border border-stoneborder bg-paper text-muted text-xs font-medium transition">Market</button>
+                                <button type="button" data-cat="Ulaşım" onclick="selectCategory('Ulaşım')" class="cat-pill px-3 py-1.5 rounded-xl border border-stoneborder bg-paper text-muted text-xs font-medium transition">Ulaşım</button>
+                                <button type="button" data-cat="Faturalar" onclick="selectCategory('Faturalar')" class="cat-pill px-3 py-1.5 rounded-xl border border-stoneborder bg-paper text-muted text-xs font-medium transition">Faturalar</button>
+                                <button type="button" data-cat="Keyfi" onclick="selectCategory('Keyfi')" class="cat-pill px-3 py-1.5 rounded-xl border border-stoneborder bg-paper text-muted text-xs font-medium transition">Keyfi</button>
+                            </div>
+                        </div>
+
+                        <!-- Zorunlu İhtiyaç / Keyfi İstek Ayrımı -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-muted mb-1.5">Harcama Niteliği</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" id="nature-need-btn" onclick="selectNature('need')" class="py-2.5 px-3 rounded-2xl border border-sage bg-sage-light text-sage text-xs font-semibold transition">
+                                    Zorunlu İhtiyaç
+                                </button>
+                                <button type="button" id="nature-want-btn" onclick="selectNature('want')" class="py-2.5 px-3 rounded-2xl border border-stoneborder bg-paper text-muted text-xs font-medium transition">
+                                    Keyfi İstek
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="mt-0.5 w-full bg-sage hover:bg-sage-dark text-white font-semibold text-sm py-3.5 rounded-2xl transition active:scale-[0.98]">
+                            Bakiyeden Düş
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 7 Günlük Haftalık Harcama Dağılımı Grafiği -->
+                <div class="bg-card border border-stoneborder rounded-3xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 class="font-serif text-base font-bold text-ink">7 Günlük Harcama Dağılımı</h3>
+                            <p class="text-[11px] text-muted">Pazartesi'den Pazar'a günlük harcama yoğunluğun</p>
+                        </div>
+                        <span id="chart-peak-label" class="text-[11px] font-semibold text-sage bg-sage-light px-2.5 py-1 rounded-full">0 ₺</span>
+                    </div>
+
+                    <!-- Çubuk Grafik Alanı -->
+                    <div id="weekly-bar-chart" class="grid grid-cols-7 gap-2 items-end h-36 pt-6 pb-1 px-1 border-b border-stoneborder/70">
+                        <!-- JS ile 7 gün doldurulacak -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SEKME 2: HARCAMALAR VE ANALİZ                                -->
+            <!-- ============================================================ -->
+            <section id="tab-expenses" class="tab-view hidden flex-col gap-4 view-animate">
+
+                <!-- İhtiyaç / İstek Dengesi Kartı -->
+                <div class="bg-card border border-stoneborder rounded-3xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="font-serif text-base font-bold text-ink">İhtiyaç / İstek Dengesi</h2>
+                        <span id="exp-total-count" class="text-[11px] font-medium text-muted">0 işlem</span>
+                    </div>
+                    <div class="flex justify-between text-xs font-semibold mb-1.5">
+                        <span class="text-sage" id="exp-need-summary">İhtiyaç: %0 (0 ₺)</span>
+                        <span class="text-clay" id="exp-want-summary">İstek: %0 (0 ₺)</span>
+                    </div>
+                    <div class="w-full h-3 bg-paper rounded-full overflow-hidden flex border border-stoneborder/70">
+                        <div id="exp-need-bar" class="h-full bg-sage transition-all duration-500" style="width: 50%"></div>
+                        <div id="exp-want-bar" class="h-full bg-clay transition-all duration-500" style="width: 50%"></div>
+                    </div>
+
+                    <!-- Filtre Hapları -->
+                    <div class="flex items-center gap-1.5 mt-4 pt-3 border-t border-stoneborder/70 overflow-x-auto">
+                        <button type="button" onclick="setHistoryFilter('all')" id="flt-all" class="flt-btn px-3 py-1.5 rounded-xl bg-ink text-paper text-xs font-semibold shrink-0">Tümü</button>
+                        <button type="button" onclick="setHistoryFilter('need')" id="flt-need" class="flt-btn px-3 py-1.5 rounded-xl bg-paper border border-stoneborder text-muted text-xs font-medium shrink-0">Zorunlu İhtiyaç</button>
+                        <button type="button" onclick="setHistoryFilter('want')" id="flt-want" class="flt-btn px-3 py-1.5 rounded-xl bg-paper border border-stoneborder text-muted text-xs font-medium shrink-0">Keyfi İstek</button>
+                    </div>
+                </div>
+
+                <!-- Harcama Kayıtları Listesi -->
+                <div class="bg-card border border-stoneborder rounded-3xl p-5 shadow-sm">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-muted mb-3">Haftalık Harcama Dökümü</h3>
+                    <div id="full-expense-list" class="flex flex-col gap-2.5">
+                        <!-- Dinamik harcama listesi -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SEKME 3: 24 SAAT DÜRTÜ FRENİ                                 -->
+            <!-- ============================================================ -->
+            <section id="tab-impulse" class="tab-view hidden flex-col gap-4 view-animate">
+
+                <!-- Açıklama ve Ekleme Formu -->
+                <div class="bg-card border border-stoneborder rounded-3xl p-5 shadow-sm">
+                    <span class="inline-block px-2.5 py-0.5 rounded-full bg-clay-light text-clay text-[11px] font-semibold mb-1.5">Dürtüsel Alışveriş Kalkanı</span>
+                    <h2 class="font-serif text-lg font-bold text-ink">24 Saat Bekleme Listesi</h2>
+                    <p class="text-xs text-muted leading-relaxed mt-1 mb-4">
+                        Anlık hevesle almak istediğin ürünü hemen satın almak yerine buraya ekle. 24 saat soğuma süresinden sonra almaktan vazgeçersen tutar doğrudan <strong>Kumbarana</strong> aktarılır.
+                    </p>
+
+                    <form id="impulse-form" class="flex flex-col gap-3">
+                        <div class="grid grid-cols-5 gap-2.5">
+                            <div class="col-span-3">
+                                <input type="text" id="imp-name-input" placeholder="Almak istediğin ürün..." required
+                                    class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-3.5 py-3 text-sm text-ink outline-none">
+                            </div>
+                            <div class="col-span-2">
+                                <input type="number" id="imp-price-input" min="1" step="0.01" placeholder="Fiyat (₺)" required
+                                    class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-3.5 py-3 text-sm font-bold text-ink outline-none">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-ink hover:bg-stone-800 text-paper font-semibold text-xs py-3.5 rounded-2xl transition active:scale-[0.98]">
+                            24 Saat Beklemeye Al
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Kurtarılan Para Özeti -->
+                <div class="bg-sage-light border border-sage/20 rounded-2xl px-4 py-3 flex items-center justify-between">
+                    <span class="text-xs font-medium text-sage">Dürtü freniyle bugüne kadar kurtarılan:</span>
+                    <span id="impulse-rescued-badge" class="text-sm font-bold text-sage">0,00 ₺</span>
+                </div>
+
+                <!-- Bekleyen İstekler Listesi -->
+                <div class="bg-card border border-stoneborder rounded-3xl p-5 shadow-sm">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-muted mb-3">Karar Bekleyen İstekler</h3>
+                    <div id="impulse-list-container" class="flex flex-col gap-3">
+                        <!-- Dinamik bekleme listesi -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SEKME 4: KUMBARA & BİRİKİM HEDEFLERİ                         -->
+            <!-- ============================================================ -->
+            <section id="tab-piggy" class="tab-view hidden flex-col gap-4 view-animate">
+
+                <!-- Toplam Kumbara Kartı -->
+                <div class="bg-sage text-white rounded-3xl p-5 shadow-sm">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="text-xs text-emerald-100/80 font-medium">Toplam Birikim Kumbarası</span>
+                            <div id="piggy-grand-total" class="font-serif text-3xl sm:text-4xl font-bold mt-1">0,00 ₺</div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full bg-white/15 text-[11px] font-semibold">Güvende</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 mt-4 pt-3.5 border-t border-white/15 text-xs">
+                        <div>
+                            <span class="text-emerald-100/75 block text-[10px]">Dağıtılmamış Bakiye</span>
+                            <span id="piggy-unallocated" class="font-bold text-sm">0 ₺</span>
+                        </div>
+                        <div>
+                            <span class="text-emerald-100/75 block text-[10px]">Hedeflere Ayrılan</span>
+                            <span id="piggy-allocated" class="font-bold text-sm">0 ₺</span>
+                        </div>
+                        <div>
+                            <span class="text-emerald-100/75 block text-[10px]">Dürtü Kazancı</span>
+                            <span id="piggy-rescued-stat" class="font-bold text-sm">0 ₺</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Birikim Hedefleri Kartı -->
+                <div class="bg-card border border-stoneborder rounded-3xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h2 class="font-serif text-base font-bold text-ink">Birikim Hedeflerim</h2>
+                            <p class="text-[11px] text-muted">Kumbarandaki parayı hedeflerine dağıt</p>
+                        </div>
+                        <button type="button" onclick="openGoalModal()" class="px-3 py-1.5 rounded-xl bg-sage text-white text-xs font-semibold active:scale-95 transition">
+                            + Hedef Ekle
+                        </button>
+                    </div>
+
+                    <div id="goals-list-container" class="flex flex-col gap-3">
+                        <!-- Dinamik hedefler -->
+                    </div>
+                </div>
+
+                <!-- Haftayı Tamamla ve Yedekleme İşlemleri -->
+                <div class="bg-card border border-stoneborder rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-muted">Hafta Sonu & Veri Yedekleme</h3>
+
+                    <button type="button" onclick="openCompleteWeekModal()" class="w-full py-3.5 px-4 rounded-2xl bg-sage hover:bg-sage-dark text-white text-xs font-semibold transition active:scale-[0.98]">
+                        Haftayı Tamamla & Artan Bakiyeyi Kumbaraya Aktar
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-2.5 pt-1">
+                        <button type="button" onclick="exportBackupJSON()" class="py-2.5 px-3 rounded-2xl bg-paper hover:bg-stone-200/70 border border-stoneborder text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                            <svg class="w-3.5 h-3.5 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>JSON Dışa Aktar</span>
+                        </button>
+                        <button type="button" onclick="triggerImportJSON()" class="py-2.5 px-3 rounded-2xl bg-paper hover:bg-stone-200/70 border border-stoneborder text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                            <svg class="w-3.5 h-3.5 text-clay" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span>JSON İçe Aktar</span>
+                        </button>
+                        <input type="file" id="json-import-file" accept=".json" class="hidden">
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- SABİT ALT NAVİGASYON BARI (4 Akıcı Alt Sekme) -->
+    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 z-30 bg-card/95 backdrop-blur-md border-t border-stoneborder px-2 py-1.5 flex justify-center">
+        <div class="w-full max-w-xl grid grid-cols-4 gap-1">
+            <button type="button" onclick="navigateTab('home')" id="nav-home" class="nav-item flex flex-col items-center justify-center py-1.5 rounded-2xl text-sage font-semibold transition">
+                <svg class="w-5 h-5 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span class="text-[10px]">Ana Sayfa</span>
+            </button>
+
+            <button type="button" onclick="navigateTab('expenses')" id="nav-expenses" class="nav-item flex flex-col items-center justify-center py-1.5 rounded-2xl text-muted hover:text-ink font-medium transition">
+                <svg class="w-5 h-5 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                <span class="text-[10px]">Harcamalar</span>
+            </button>
+
+            <button type="button" onclick="navigateTab('impulse')" id="nav-impulse" class="nav-item relative flex flex-col items-center justify-center py-1.5 rounded-2xl text-muted hover:text-ink font-medium transition">
+                <span id="nav-impulse-dot" class="hidden absolute top-1.5 right-6 w-2 h-2 rounded-full bg-clay"></span>
+                <svg class="w-5 h-5 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span class="text-[10px]">24s Fren</span>
+            </button>
+
+            <button type="button" onclick="navigateTab('piggy')" id="nav-piggy" class="nav-item flex flex-col items-center justify-center py-1.5 rounded-2xl text-muted hover:text-ink font-medium transition">
+                <svg class="w-5 h-5 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/></svg>
+                <span class="text-[10px]">Kumbara</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MODAL 1: BÜTÇE VE BİRİKİM YÜZDESİ GÜNCELLEME -->
+    <div id="modal-setup" class="fixed inset-0 z-40 bg-ink/40 backdrop-blur-[2px] hidden items-center justify-center p-4">
+        <div class="bg-card border border-stoneborder rounded-3xl w-full max-w-sm p-6 shadow-xl">
+            <h3 class="font-serif text-lg font-bold text-ink mb-1">Haftalık Bütçe Planı</h3>
+            <p class="text-xs text-muted mb-4">Haftalık bütçeni ve otomatik birikim yüzdesini düzenle.</p>
+            <form id="modal-setup-form" class="flex flex-col gap-3.5">
+                <div>
+                    <label class="block text-xs font-semibold text-ink mb-1">Haftalık Toplam Bütçe (₺)</label>
+                    <input type="number" id="modal-budget-val" min="10" step="1" required
+                        class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-4 py-2.5 text-base font-bold text-ink outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-ink mb-1">Önce Kendine Öde Yüzdesi (%)</label>
+                    <input type="number" id="modal-pct-val" min="0" max="90" step="1" required
+                        class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-4 py-2.5 text-base font-semibold text-sage outline-none">
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <button type="button" onclick="closeModal('modal-setup')" class="flex-1 py-3 rounded-2xl bg-paper border border-stoneborder text-muted text-xs font-semibold">Vazgeç</button>
+                    <button type="submit" class="flex-1 py-3 rounded-2xl bg-sage text-white text-xs font-semibold">Güncelle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: YENİ BİRİKİM HEDEFİ OLUŞTURMA -->
+    <div id="modal-goal" class="fixed inset-0 z-40 bg-ink/40 backdrop-blur-[2px] hidden items-center justify-center p-4">
+        <div class="bg-card border border-stoneborder rounded-3xl w-full max-w-sm p-6 shadow-xl">
+            <h3 class="font-serif text-lg font-bold text-ink mb-1">Yeni Birikim Hedefi</h3>
+            <p class="text-xs text-muted mb-4">Acil durum fonu, tatil veya almak istediğin büyük bir hedef belirle.</p>
+            <form id="modal-goal-form" class="flex flex-col gap-3.5">
+                <div>
+                    <label class="block text-xs font-semibold text-ink mb-1">Hedef Adı</label>
+                    <input type="text" id="goal-name-input" placeholder="Örn: Acil Durum Fonu, Tatil..." required
+                        class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-4 py-2.5 text-sm text-ink outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-ink mb-1">Hedeflenen Tutar (₺)</label>
+                    <input type="number" id="goal-target-input" min="10" step="1" placeholder="Örn: 10000" required
+                        class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-4 py-2.5 text-base font-bold text-sage outline-none">
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <button type="button" onclick="closeModal('modal-goal')" class="flex-1 py-3 rounded-2xl bg-paper border border-stoneborder text-muted text-xs font-semibold">İptal</button>
+                    <button type="submit" class="flex-1 py-3 rounded-2xl bg-sage text-white text-xs font-semibold">Hedef Oluştur</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: HEDEFİNE KUMBARADAN PARA AKTARMA -->
+    <div id="modal-allocate" class="fixed inset-0 z-40 bg-ink/40 backdrop-blur-[2px] hidden items-center justify-center p-4">
+        <div class="bg-card border border-stoneborder rounded-3xl w-full max-w-sm p-6 shadow-xl">
+            <h3 id="alloc-goal-title" class="font-serif text-lg font-bold text-ink mb-1">Hedefe Para Aktar</h3>
+            <p id="alloc-available-text" class="text-xs text-muted mb-4">Dağıtılabilir kumbara bakiyesi: 0 ₺</p>
+            <form id="modal-allocate-form" class="flex flex-col gap-3.5">
+                <input type="hidden" id="alloc-goal-id">
+                <div>
+                    <label class="block text-xs font-semibold text-ink mb-1">Aktarılacak Tutar (₺)</label>
+                    <input type="number" id="alloc-amount-input" min="1" step="0.01" required
+                        class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-4 py-2.5 text-base font-bold text-sage outline-none">
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <button type="button" onclick="closeModal('modal-allocate')" class="flex-1 py-3 rounded-2xl bg-paper border border-stoneborder text-muted text-xs font-semibold">Vazgeç</button>
+                    <button type="submit" class="flex-1 py-3 rounded-2xl bg-sage text-white text-xs font-semibold">Aktar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: HAFTAYI TAMAMLA -->
+    <div id="modal-complete-week" class="fixed inset-0 z-40 bg-ink/40 backdrop-blur-[2px] hidden items-center justify-center p-4">
+        <div class="bg-card border border-stoneborder rounded-3xl w-full max-w-sm p-6 shadow-xl">
+            <h3 class="font-serif text-lg font-bold text-ink mb-1.5">Haftayı Tamamla</h3>
+            <p id="complete-week-desc" class="text-xs text-muted leading-relaxed mb-4">
+                Bu hafta ayrılan birikimin ve harcanmadan kalan bakiyen otomatik olarak kumbarana aktarılacak.
+            </p>
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-ink mb-1">Yeni Hafta Bütçesi (₺)</label>
+                <input type="number" id="complete-next-budget" min="10" step="1"
+                    class="w-full bg-paper border border-stoneborder focus:border-sage rounded-2xl px-4 py-2.5 text-base font-bold text-ink outline-none">
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="closeModal('modal-complete-week')" class="flex-1 py-3 rounded-2xl bg-paper border border-stoneborder text-muted text-xs font-semibold">İptal</button>
+                <button type="button" onclick="confirmCompleteWeek()" class="flex-1 py-3 rounded-2xl bg-sage text-white text-xs font-semibold">Kumbaraya Aktar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'butce_defterim_pro_v1';
+
+        // Uygulama Durumu (State)
+        let appData = {
+            weeklyBudget: 0,
+            savingsPercent: 15,
+            pastPiggyBalance: 0,    // Önceki haftalardan aktarılan kümülatif birikim
+            rescuedImpulseTotal: 0, // 24s bekleme listesinden vazgeçilip kurtarılan toplam
+            expenses: [],           // { id, amount, desc, category, nature: 'need'|'want', dayIndex: 0..6 (Pzt..Paz), dateLabel }
+            wishlist: [],           // { id, name, price, createdAt }
+            goals: [
+                { id: 'g_default_1', name: 'Acil Durum Fonu', target: 10000, saved: 0 }
+            ]
+        };
+
+        let activeTab = 'home';
+        let selectedCategory = 'Yeme-İçme';
+        let selectedNature = 'need';
+        let historyFilter = 'all';
+        let toastTimeout = null;
+
+        // --- FORMATLAMA VE TARİH YARDIMCILARI ---
+        function fmtMoney(val) {
+            return Number(val || 0).toLocaleString('tr-TR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function fmtShort(val) {
+            return Number(val || 0).toLocaleString('tr-TR', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            }) + ' ₺';
+        }
+
+        // Pazartesi = 0 ... Pazar = 6
+        function getTodayIndex() {
+            const d = new Date().getDay();
+            return d === 0 ? 6 : d - 1;
+        }
+
+        function getRemainingDaysInWeek() {
+            return 7 - getTodayIndex();
+        }
+
+        function getTimestampLabel() {
+            const d = new Date();
+            const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+            const dayName = dayNames[getTodayIndex()];
+            return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')} ${dayName} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function showToast(msg, isCelebrate = false) {
+            const wrapper = document.getElementById('toast-wrapper');
+            const box = document.getElementById('toast-box');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-text').textContent = msg;
+
+            if (isCelebrate) {
+                box.className = 'bg-sage text-white px-4 py-3.5 rounded-2xl shadow-xl flex items-center justify-between gap-3 border border-white/20 celebrate-pop';
+                icon.textContent = '★';
+                icon.className = 'w-6 h-6 rounded-full bg-white text-sage flex items-center justify-center shrink-0 text-xs font-bold';
+            } else {
+                box.className = 'bg-ink text-paper px-4 py-3.5 rounded-2xl shadow-xl flex items-center justify-between gap-3 border border-white/10';
+                icon.textContent = '✓';
+                icon.className = 'w-6 h-6 rounded-full bg-sage text-white flex items-center justify-center shrink-0 text-xs font-bold';
+            }
+
+            wrapper.classList.remove('opacity-0', '-translate-y-4');
+            wrapper.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                wrapper.classList.remove('opacity-100', 'translate-y-0');
+                wrapper.classList.add('opacity-0', '-translate-y-4');
+            }, isCelebrate ? 3400 : 2500);
+        }
+
+        // --- KALICI HAFIZA (LOCALSTORAGE) ---
+        function persistData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            } catch (e) {}
+        }
+
+        function hydrateData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed.weeklyBudget === 'number') {
+                        appData = { ...appData, ...parsed };
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // --- HESAPLAMALAR ---
+        function getFinancialMetrics() {
+            const lockedSavings = Math.round((appData.weeklyBudget * appData.savingsPercent) / 100);
+            const spendableBudget = Math.max(0, appData.weeklyBudget - lockedSavings);
+            const totalSpent = appData.expenses.reduce((sum, item) => sum + item.amount, 0);
+            const remainingBalance = spendableBudget - totalSpent;
+            const daysLeft = getRemainingDaysInWeek();
+            const dailyLimit = remainingBalance > 0 ? remainingBalance / daysLeft : 0;
+
+            // Toplam Kumbara = Geçmiş haftalar + Bu hafta baştan ayrılan + 24s fren kazancı
+            const grandPiggyTotal = appData.pastPiggyBalance + lockedSavings + appData.rescuedImpulseTotal;
+            const allocatedToGoals = appData.goals.reduce((sum, g) => sum + g.saved, 0);
+            const unallocatedPiggy = Math.max(0, grandPiggyTotal - allocatedToGoals);
+
+            return {
+                lockedSavings,
+                spendableBudget,
+                totalSpent,
+                remainingBalance,
+                daysLeft,
+                dailyLimit,
+                grandPiggyTotal,
+                allocatedToGoals,
+                unallocatedPiggy
+            };
+        }
+
+        // --- NAVİGASYON ---
+        window.navigateTab = function(tabName) {
+            activeTab = tabName;
+            ['home', 'expenses', 'impulse', 'piggy'].forEach(t => {
+                const view = document.getElementById(`tab-${t}`);
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (t === tabName) {
+                    view.classList.remove('hidden');
+                    view.classList.add('flex');
+                    navBtn.className = 'nav-item relative flex flex-col items-center justify-center py-1.5 rounded-2xl text-sage bg-sage-light/60 font-semibold transition';
+                } else {
+                    view.classList.add('hidden');
+                    view.classList.remove('flex');
+                    navBtn.className = 'nav-item relative flex flex-col items-center justify-center py-1.5 rounded-2xl text-muted hover:text-ink font-medium transition';
+                }
+            });
+            renderApp();
+        };
+
+        // --- İLK KURULUM ETKİLEŞİMLERİ ---
+        function updateInitPreview() {
+            const b = parseFloat(document.getElementById('init-budget-input').value) || 0;
+            const p = parseFloat(document.getElementById('init-pct-input').value) || 0;
+            const amt = Math.round((b * p) / 100);
+            document.getElementById('init-savings-preview').textContent = `${fmtShort(amt)} ayrılacak`;
+        }
+
+        window.setInitPct = function(pct) {
+            document.getElementById('init-pct-input').value = pct;
+            document.querySelectorAll('.init-pct-btn').forEach(btn => {
+                if (btn.textContent === `%${pct}`) {
+                    btn.className = 'init-pct-btn py-2 rounded-xl border border-sage bg-sage-light text-xs font-semibold text-sage transition';
+                } else {
+                    btn.className = 'init-pct-btn py-2 rounded-xl border border-stoneborder bg-paper text-xs font-semibold text-ink transition';
+                }
+            });
+            updateInitPreview();
+        };
+
+        document.getElementById('init-budget-input').addEventListener('input', updateInitPreview);
+        document.getElementById('init-pct-input').addEventListener('input', updateInitPreview);
+
+        document.getElementById('initial-setup-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const budget = parseFloat(document.getElementById('init-budget-input').value);
+            const pct = parseFloat(document.getElementById('init-pct-input').value) || 0;
+            if (isNaN(budget) || budget <= 0) return;
+
+            appData.weeklyBudget = budget;
+            appData.savingsPercent = Math.min(90, Math.max(0, pct));
+            persistData();
+            renderApp();
+            showToast('Haftalık bütçe defterin oluşturuldu!', true);
+        });
+
+        // --- HIZLI HARCAMA FORMU ---
+        window.addQuickAmount = function(delta) {
+            const inp = document.getElementById('exp-amount-input');
+            const cur = parseFloat(inp.value) || 0;
+            inp.value = cur + delta;
+        };
+
+        window.selectCategory = function(cat) {
+            selectedCategory = cat;
+            document.querySelectorAll('.cat-pill').forEach(btn => {
+                if (btn.dataset.cat === cat) {
+                    btn.className = 'cat-pill px-3 py-1.5 rounded-xl border border-sage bg-sage-light text-sage text-xs font-semibold transition';
+                } else {
+                    btn.className = 'cat-pill px-3 py-1.5 rounded-xl border border-stoneborder bg-paper text-muted text-xs font-medium transition';
+                }
+            });
+        };
+
+        window.selectNature = function(nat) {
+            selectedNature = nat;
+            const needBtn = document.getElementById('nature-need-btn');
+            const wantBtn = document.getElementById('nature-want-btn');
+            if (nat === 'need') {
+                needBtn.className = 'py-2.5 px-3 rounded-2xl border border-sage bg-sage-light text-sage text-xs font-semibold transition';
+                wantBtn.className = 'py-2.5 px-3 rounded-2xl border border-stoneborder bg-paper text-muted text-xs font-medium transition';
+            } else {
+                wantBtn.className = 'py-2.5 px-3 rounded-2xl border border-clay bg-clay-light text-clay text-xs font-semibold transition';
+                needBtn.className = 'py-2.5 px-3 rounded-2xl border border-stoneborder bg-paper text-muted text-xs font-medium transition';
+            }
+        };
+
+        document.getElementById('quick-expense-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('exp-amount-input').value);
+            const desc = document.getElementById('exp-desc-input').value.trim();
+            if (isNaN(amount) || amount <= 0 || !desc) return;
+
+            appData.expenses.push({
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+                amount,
+                desc,
+                category: selectedCategory,
+                nature: selectedNature,
+                dayIndex: getTodayIndex(),
+                dateLabel: getTimestampLabel()
+            });
+
+            persistData();
+            renderApp();
+            document.getElementById('exp-amount-input').value = '';
+            document.getElementById('exp-desc-input').value = '';
+            showToast(`${desc} (-${fmtShort(amount)}) bakiyenden düşüldü.`);
+        });
+
+        window.deleteExpenseItem = function(id) {
+            const idx = appData.expenses.findIndex(x => x.id === id);
+            if (idx === -1) return;
+            const removed = appData.expenses.splice(idx, 1)[0];
+            persistData();
+            renderApp();
+            showToast(`"${removed.desc}" silindi, ${fmtShort(removed.amount)} iade edildi.`);
+        };
+
+        window.setHistoryFilter = function(flt) {
+            historyFilter = flt;
+            ['all', 'need', 'want'].forEach(f => {
+                const btn = document.getElementById(`flt-${f}`);
+                if (f === flt) {
+                    btn.className = 'flt-btn px-3 py-1.5 rounded-xl bg-ink text-paper text-xs font-semibold shrink-0';
+                } else {
+                    btn.className = 'flt-btn px-3 py-1.5 rounded-xl bg-paper border border-stoneborder text-muted text-xs font-medium shrink-0';
+                }
+            });
+            renderExpensesTab();
+        };
+
+        // --- 24 SAAT DÜRTÜ FRENİ ---
+        document.getElementById('impulse-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('imp-name-input').value.trim();
+            const price = parseFloat(document.getElementById('imp-price-input').value);
+            if (!name || isNaN(price) || price <= 0) return;
+
+            appData.wishlist.push({
+                id: Date.now().toString(36),
+                name,
+                price,
+                createdAt: Date.now()
+            });
+
+            persistData();
+            renderApp();
+            document.getElementById('imp-name-input').value = '';
+            document.getElementById('imp-price-input').value = '';
+            showToast(`"${name}" 24 saat bekleme listesine alındı.`);
+        });
+
+        window.rescueFromImpulse = function(id) {
+            const idx = appData.wishlist.findIndex(w => w.id === id);
+            if (idx === -1) return;
+            const item = appData.wishlist.splice(idx, 1)[0];
+            appData.rescuedImpulseTotal += item.price;
+            persistData();
+            renderApp();
+            showToast(`Tebrikler! "${item.name}" almaktan vazgeçtin, ${fmtShort(item.price)} kumbarana aktarıldı!`, true);
+        };
+
+        window.purchaseFromImpulse = function(id) {
+            const idx = appData.wishlist.findIndex(w => w.id === id);
+            if (idx === -1) return;
+            const item = appData.wishlist.splice(idx, 1)[0];
+            appData.expenses.push({
+                id: Date.now().toString(36),
+                amount: item.price,
+                desc: item.name,
+                category: 'Keyfi',
+                nature: 'want',
+                dayIndex: getTodayIndex(),
+                dateLabel: getTimestampLabel()
+            });
+            persistData();
+            renderApp();
+            showToast(`"${item.name}" harcamalara eklendi.`);
+        };
+
+        // --- BİRİKİM HEDEFLERİ ---
+        window.openGoalModal = function() {
+            document.getElementById('goal-name-input').value = '';
+            document.getElementById('goal-target-input').value = '';
+            openModal('modal-goal');
+        };
+
+        document.getElementById('modal-goal-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('goal-name-input').value.trim();
+            const target = parseFloat(document.getElementById('goal-target-input').value);
+            if (!name || isNaN(target) || target <= 0) return;
+
+            appData.goals.push({
+                id: 'g_' + Date.now().toString(36),
+                name,
+                target,
+                saved: 0
+            });
+            persistData();
+            closeModal('modal-goal');
+            renderApp();
+            showToast(`"${name}" birikim hedefi oluşturuldu.`);
+        });
+
+        window.openAllocateModal = function(goalId) {
+            const goal = appData.goals.find(g => g.id === goalId);
+            const metrics = getFinancialMetrics();
+            if (!goal) return;
+
+            if (metrics.unallocatedPiggy <= 0) {
+                showToast('Kumbarada henüz dağıtılabilir boş bakiye bulunmuyor.');
+                return;
+            }
+
+            document.getElementById('alloc-goal-id').value = goal.id;
+            document.getElementById('alloc-goal-title').textContent = `${goal.name} Hedefine Aktar`;
+            document.getElementById('alloc-available-text').textContent = `Dağıtılabilir kumbara bakiyesi: ${fmtShort(metrics.unallocatedPiggy)}`;
+            const needed = Math.max(0, goal.target - goal.saved);
+            document.getElementById('alloc-amount-input').value = Math.min(metrics.unallocatedPiggy, needed || metrics.unallocatedPiggy);
+            openModal('modal-allocate');
+        };
+
+        document.getElementById('modal-allocate-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const goalId = document.getElementById('alloc-goal-id').value;
+            const amount = parseFloat(document.getElementById('alloc-amount-input').value);
+            const metrics = getFinancialMetrics();
+            const goal = appData.goals.find(g => g.id === goalId);
+
+            if (!goal || isNaN(amount) || amount <= 0) return;
+            if (amount > metrics.unallocatedPiggy + 0.01) {
+                showToast('Dağıtılabilir kumbara bakiyesinden fazla aktaramazsın.');
+                return;
+            }
+
+            goal.saved += amount;
+            persistData();
+            closeModal('modal-allocate');
+            renderApp();
+            showToast(`${fmtShort(amount)} "${goal.name}" hedefine aktarıldı!`, true);
+        });
+
+        window.deleteGoal = function(goalId) {
+            const idx = appData.goals.findIndex(g => g.id === goalId);
+            if (idx === -1) return;
+            const removed = appData.goals.splice(idx, 1)[0];
+            persistData();
+            renderApp();
+            showToast(`"${removed.name}" hedefi kaldırıldı, tutar kumbaraya döndü.`);
+        };
+
+        // --- MODALLAR VE HAFTA SONU AKTARIMI ---
+        function openModal(id) {
+            const el = document.getElementById(id);
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+        }
+
+        window.closeModal = function(id) {
+            const el = document.getElementById(id);
+            el.classList.add('hidden');
+            el.classList.remove('flex');
+        };
+
+        window.openSetupModal = function() {
+            document.getElementById('modal-budget-val').value = appData.weeklyBudget;
+            document.getElementById('modal-pct-val').value = appData.savingsPercent;
+            openModal('modal-setup');
+        };
+
+        document.getElementById('modal-setup-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const b = parseFloat(document.getElementById('modal-budget-val').value);
+            const p = parseFloat(document.getElementById('modal-pct-val').value) || 0;
+            if (isNaN(b) || b <= 0) return;
+
+            appData.weeklyBudget = b;
+            appData.savingsPercent = Math.min(90, Math.max(0, p));
+            persistData();
+            closeModal('modal-setup');
+            renderApp();
+            showToast('Haftalık bütçe planı güncellendi.');
+        });
+
+        window.openCompleteWeekModal = function() {
+            const m = getFinancialMetrics();
+            const leftover = Math.max(0, m.remainingBalance);
+            const totalGain = m.lockedSavings + leftover;
+            document.getElementById('complete-week-desc').textContent =
+                `Bu hafta ayrılan ${fmtShort(m.lockedSavings)} birikim ve harcanmadan kalan ${fmtShort(leftover)} (Toplam ${fmtShort(totalGain)}) kalıcı olarak kumbarana aktarılacak.`;
+            document.getElementById('complete-next-budget').value = appData.weeklyBudget;
+            openModal('modal-complete-week');
+        };
+
+        window.confirmCompleteWeek = function() {
+            const m = getFinancialMetrics();
+            const leftover = Math.max(0, m.remainingBalance);
+            const nextBudget = parseFloat(document.getElementById('complete-next-budget').value) || appData.weeklyBudget;
+
+            appData.pastPiggyBalance += (m.lockedSavings + leftover);
+            appData.weeklyBudget = nextBudget;
+            appData.expenses = [];
+            persistData();
+            closeModal('modal-complete-week');
+            navigateTab('home');
+            showToast('Hafta tamamlandı! Birikimlerin kumbaraya eklendi.', true);
+        };
+
+        // --- JSON YEDEKLEME (DIŞA / İÇE AKTAR) ---
+        window.exportBackupJSON = function() {
+            const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `butce_defterim_yedek_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('JSON yedek dosyası indirildi.');
+        };
+
+        window.triggerImportJSON = function() {
+            document.getElementById('json-import-file').click();
+        };
+
+        document.getElementById('json-import-file').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const imported = JSON.parse(evt.target.result);
+                    if (imported && typeof imported.weeklyBudget === 'number') {
+                        appData = { ...appData, ...imported };
+                        persistData();
+                        renderApp();
+                        showToast('Yedek verileri başarıyla yüklendi!', true);
+                    } else {
+                        showToast('Geçersiz yedek dosyası formatı.');
+                    }
+                } catch (err) {
+                    showToast('Dosya okunurken hata oluştu.');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        });
+
+        // --- EKRAN ÇİZİM FONKSİYONLARI (RENDER) ---
+        function renderApp() {
+            const todayFormatted = new Date().toLocaleDateString('tr-TR', {
+                weekday: 'long', day: 'numeric', month: 'long'
+            });
+            document.getElementById('header-date-label').textContent = todayFormatted;
+
+            const setupScreen = document.getElementById('first-setup-screen');
+            const mainContainer = document.getElementById('app-main-container');
+            const bottomNav = document.getElementById('bottom-nav');
+
+            if (appData.weeklyBudget <= 0) {
+                setupScreen.classList.remove('hidden');
+                mainContainer.classList.add('hidden');
+                bottomNav.classList.add('hidden');
+                return;
+            } else {
+                setupScreen.classList.add('hidden');
+                mainContainer.classList.remove('hidden');
+                bottomNav.classList.remove('hidden');
+            }
+
+            const m = getFinancialMetrics();
+
+            // Üst Kumbara Rozeti
+            document.getElementById('top-piggy-amount').textContent = fmtShort(m.grandPiggyTotal);
+
+            // Dürtü Freni Bildirim Noktası
+            const impulseDot = document.getElementById('nav-impulse-dot');
+            if (appData.wishlist.length > 0) impulseDot.classList.remove('hidden');
+            else impulseDot.classList.add('hidden');
+
+            // Ana Sayfa Bakiye Kartı
+            const remEl = document.getElementById('home-remaining-val');
+            remEl.textContent = fmtMoney(m.remainingBalance);
+            remEl.className = `font-serif text-4xl sm:text-[42px] font-bold tracking-tight ${m.remainingBalance < 0 ? 'text-clay' : 'text-ink'}`;
+
+            document.getElementById('home-spent-summary').textContent = `Harcanan: ${fmtShort(m.totalSpent)}`;
+            document.getElementById('home-daily-limit').textContent = `Günlük Limit: ${fmtShort(m.dailyLimit)}`;
+            document.getElementById('home-total-budget').textContent = fmtShort(appData.weeklyBudget);
+            document.getElementById('home-locked-savings').textContent = `${fmtShort(m.lockedSavings)} (%${appData.savingsPercent})`;
+            document.getElementById('home-days-left').textContent = `${m.daysLeft} gün`;
+
+            const pctLeft = m.spendableBudget > 0 ? (m.remainingBalance / m.spendableBudget) * 100 : 0;
+            const barEl = document.getElementById('home-progress-bar');
+            const pillEl = document.getElementById('home-status-pill');
+            barEl.style.width = `${Math.max(0, Math.min(100, pctLeft))}%`;
+
+            if (m.remainingBalance < 0) {
+                barEl.className = 'h-full bg-clay rounded-full transition-all duration-500';
+                pillEl.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-clay-light text-clay';
+                pillEl.textContent = 'Bütçe Aşıldı';
+            } else if (pctLeft <= 25) {
+                barEl.className = 'h-full bg-clay rounded-full transition-all duration-500';
+                pillEl.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-clay-light text-clay';
+                pillEl.textContent = 'Dikkatli Harca';
+            } else {
+                barEl.className = 'h-full bg-sage rounded-full transition-all duration-500';
+                pillEl.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-sage-light text-sage';
+                pillEl.textContent = 'Dengeli İlerliyor';
+            }
+
+            renderWeeklyChart();
+            renderExpensesTab();
+            renderImpulseTab();
+            renderPiggyTab(m);
+        }
+
+        function renderWeeklyChart() {
+            const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+            const dayTotals = [0, 0, 0, 0, 0, 0, 0];
+            appData.expenses.forEach(exp => {
+                const idx = typeof exp.dayIndex === 'number' ? exp.dayIndex : 0;
+                if (idx >= 0 && idx < 7) dayTotals[idx] += exp.amount;
+            });
+
+            const maxVal = Math.max(...dayTotals, 1);
+            const peak = Math.max(...dayTotals);
+            document.getElementById('chart-peak-label').textContent = peak > 0 ? `En yüksek: ${fmtShort(peak)}` : 'Henüz veri yok';
+
+            const todayIdx = getTodayIndex();
+            const chartEl = document.getElementById('weekly-bar-chart');
+
+            chartEl.innerHTML = days.map((label, i) => {
+                const val = dayTotals[i];
+                const heightPct = val > 0 ? Math.max(12, Math.round((val / maxVal) * 100)) : 6;
+                const isToday = i === todayIdx;
+                const barColor = val > 0
+                    ? (isToday ? 'bg-sage' : 'bg-sage/60')
+                    : 'bg-stone-200/80';
+
+                return `
+                    <div class="flex flex-col items-center h-full justify-end gap-1.5">
+                        <span class="text-[9px] font-semibold text-muted truncate max-w-full">${val > 0 ? Math.round(val) + '₺' : ''}</span>
+                        <div class="w-full max-w-[28px] h-24 bg-paper rounded-xl flex items-end p-0.5">
+                            <div class="w-full rounded-lg ${barColor} transition-all duration-500" style="height: ${heightPct}%"></div>
+                        </div>
+                        <span class="text-[11px] ${isToday ? 'font-bold text-sage' : 'font-medium text-muted'}">${label}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderExpensesTab() {
+            const totalSpent = appData.expenses.reduce((s, e) => s + e.amount, 0);
+            const needTotal = appData.expenses.filter(e => e.nature === 'need').reduce((s, e) => s + e.amount, 0);
+            const wantTotal = appData.expenses.filter(e => e.nature === 'want').reduce((s, e) => s + e.amount, 0);
+
+            const needPct = totalSpent > 0 ? Math.round((needTotal / totalSpent) * 100) : 0;
+            const wantPct = totalSpent > 0 ? (100 - needPct) : 0;
+
+            document.getElementById('exp-total-count').textContent = `${appData.expenses.length} kayıt`;
+            document.getElementById('exp-need-summary').textContent = `İhtiyaç: %${needPct} (${fmtShort(needTotal)})`;
+            document.getElementById('exp-want-summary').textContent = `İstek: %${wantPct} (${fmtShort(wantTotal)})`;
+            document.getElementById('exp-need-bar').style.width = totalSpent > 0 ? `${needPct}%` : '50%';
+            document.getElementById('exp-want-bar').style.width = totalSpent > 0 ? `${wantPct}%` : '50%';
+
+            const filtered = appData.expenses.filter(e => {
+                if (historyFilter === 'all') return true;
+                return e.nature === historyFilter;
+            });
+
+            const listEl = document.getElementById('full-expense-list');
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="py-8 px-4 text-center rounded-2xl bg-paper border border-dashed border-stoneborder">
+                        <p class="text-xs font-medium text-muted">Bu görünümde henüz harcama kaydı yok.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = [...filtered].reverse().map(item => {
+                const isNeed = item.nature === 'need';
+                const badgeStyle = isNeed ? 'bg-sage-light text-sage' : 'bg-clay-light text-clay';
+                const badgeLabel = isNeed ? 'İhtiyaç' : 'İstek';
+                return `
+                    <div class="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-paper/90 border border-stoneborder/80">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-semibold text-ink truncate">${escapeHtml(item.desc)}</span>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeStyle} shrink-0">${badgeLabel}</span>
+                            </div>
+                            <div class="text-[11px] text-muted mt-0.5">${item.category} • ${item.dateLabel}</div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-sm font-bold text-ink">-${fmtShort(item.amount)}</span>
+                            <button type="button" onclick="deleteExpenseItem('${item.id}')" class="p-1.5 rounded-xl text-muted hover:text-clay hover:bg-clay-light transition" title="Sil">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderImpulseTab() {
+            document.getElementById('impulse-rescued-badge').textContent = `${fmtMoney(appData.rescuedImpulseTotal)} ₺`;
+            const listEl = document.getElementById('impulse-list-container');
+
+            if (appData.wishlist.length === 0) {
+                listEl.innerHTML = `
+                    <div class="py-8 px-4 text-center rounded-2xl bg-paper border border-dashed border-stoneborder">
+                        <p class="text-xs font-medium text-muted">Bekleme listen şu an boş.</p>
+                        <p class="text-[11px] text-muted/80 mt-1">Anlık hevesle almak istediğin bir ürün olursa yukarıdan ekle.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const now = Date.now();
+            listEl.innerHTML = [...appData.wishlist].reverse().map(item => {
+                const hoursElapsed = Math.floor((now - item.createdAt) / (1000 * 60 * 60));
+                const hoursLeft = Math.max(0, 24 - hoursElapsed);
+                const timerText = hoursLeft > 0
+                    ? `Soğuma süresi: ${hoursLeft} saat kaldı`
+                    : `24 saat doldu — Hâlâ gerçekten istiyor musun?`;
+
+                return `
+                    <div class="p-4 rounded-2xl bg-paper border border-stoneborder flex flex-col gap-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <div class="text-sm font-bold text-ink">${escapeHtml(item.name)}</div>
+                                <div class="text-[11px] font-medium text-clay mt-0.5">${timerText}</div>
+                            </div>
+                            <span class="text-sm font-bold text-ink shrink-0">${fmtShort(item.price)}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="rescueFromImpulse('${item.id}')" class="py-2.5 px-3 rounded-xl bg-sage hover:bg-sage-dark text-white text-xs font-semibold transition active:scale-95">
+                                Vazgeçtim (Kumbaraya)
+                            </button>
+                            <button type="button" onclick="purchaseFromImpulse('${item.id}')" class="py-2.5 px-3 rounded-xl bg-card border border-stoneborder hover:bg-stone-100 text-ink text-xs font-medium transition active:scale-95">
+                                Satın Aldım (Düş)
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderPiggyTab(m) {
+            document.getElementById('piggy-grand-total').textContent = `${fmtMoney(m.grandPiggyTotal)} ₺`;
+            document.getElementById('piggy-unallocated').textContent = fmtShort(m.unallocatedPiggy);
+            document.getElementById('piggy-allocated').textContent = fmtShort(m.allocatedToGoals);
+            document.getElementById('piggy-rescued-stat').textContent = fmtShort(appData.rescuedImpulseTotal);
+
+            const goalsEl = document.getElementById('goals-list-container');
+            if (appData.goals.length === 0) {
+                goalsEl.innerHTML = `
+                    <div class="py-7 px-4 text-center rounded-2xl bg-paper border border-dashed border-stoneborder">
+                        <p class="text-xs text-muted">Henüz birikim hedefi eklemedin.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            goalsEl.innerHTML = appData.goals.map(goal => {
+                const pct = goal.target > 0 ? Math.min(100, Math.round((goal.saved / goal.target) * 100)) : 0;
+                const isDone = pct >= 100;
+                return `
+                    <div class="p-4 rounded-2xl bg-paper border border-stoneborder flex flex-col gap-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-bold text-ink">${escapeHtml(goal.name)}</span>
+                                    ${isDone ? '<span class="px-2 py-0.5 rounded-full bg-sage-light text-sage text-[10px] font-bold">Tamamlandı</span>' : ''}
+                                </div>
+                                <div class="text-[11px] text-muted mt-0.5">${fmtShort(goal.saved)} / ${fmtShort(goal.target)} (%${pct})</div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="openAllocateModal('${goal.id}')" class="px-3 py-1.5 rounded-xl bg-sage-light text-sage text-xs font-semibold hover:bg-sage hover:text-white transition">
+                                    + Para Aktar
+                                </button>
+                                <button type="button" onclick="deleteGoal('${goal.id}')" class="p-1.5 rounded-xl text-muted hover:text-clay transition" title="Hedefi Sil">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="w-full h-2.5 bg-card rounded-full overflow-hidden border border-stoneborder/60">
+                            <div class="h-full bg-sage rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- UYGULAMAYI BAŞLAT ---
+        window.addEventListener('DOMContentLoaded', () => {
+            hydrateData();
+            renderApp();
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            }
+        });
+    </script>
+</body>
+</html>
